@@ -1,4 +1,4 @@
-* CUBE HQ
+# CUBE HQ
 
 THis is the first step toward a Rubik's cube toolkit app that can connect to bluetooth enabled smart cubes
 
