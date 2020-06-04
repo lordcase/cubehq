@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import {algs, alg_keys} from './algs.js'
+	import {algs} from './algs.js'
 	import { createEventDispatcher } from 'svelte';
 	
 	let currPos = 0
@@ -12,13 +12,24 @@
 	let startTime = 0
 	let endTime = 0
 	let solveTime = 0
+	let showHide = []
 
 	$: current_alg = '';
+	const alg_keys = Object.keys(algs)
+	const alg_list = []
+	for (let f in algs) {
+		for (let a in algs[f]) {
+			alg_list.push(algs[f][a].name)
+		}
+	}
 	var active_families = alg_keys
+	var active_algs = alg_list
+	console.log("args",active_algs)
 	var alg_arr = assembleAlgArray()
 	const dispatch = createEventDispatcher();
 	let seq = []
-	
+	console.log(alg_keys)
+	console.log(alg_list)
 	const reset = () => {
 		state = 'idle'
 		startTime = 0
@@ -41,32 +52,41 @@
 			startTime = Date.now()
 		}
 	}
-
+	const switchChildren = (e) => {
+		const newState = e.target.checked
+		const inputs = document.querySelectorAll(`.algs_${e.target.name} input`)
+		for (let i of inputs) {
+			i.checked = newState
+		}
+		reEval()
+	}
 
 
 	export function getRandomAlg() {
 		let alg_rnd_key = Math.floor(Math.random() * alg_arr.length)
-		if (!current_alg || alg_arr[alg_rnd_key].name != current_alg.name) {
+		if (alg_arr.length < 1) {
+			return
+		}	else if (!current_alg || alg_arr[alg_rnd_key].name != current_alg.name) {
 			current_alg = alg_arr[alg_rnd_key]
 			dispatch("newalg", current_alg)
-
 			seq = current_alg.seq.split(' ').map(a=>({state:'', move:a}))
 			reset()
-		} else if (current_alg){
+		} else if (current_alg && alg_arr.length > 1){
 			getRandomAlg()
 		}
 	}
 	
 	function assembleAlgArray () {
 		let current_algset = []
-		console.log('act', active_families)
 		for (let i in alg_keys){
 			console.log(`curr_key:${i} - ${alg_keys[i]}`)
 			if (active_families.indexOf(alg_keys[i])!==-1) {
-			console.log(`curr_key:${i} - ${alg_keys[i]} bingo`)
+				console.log(`curr_key:${i} - ${alg_keys[i]} bingo`)
 				for (let j in algs[alg_keys[i]]) {
-					console.log(`pushing:${j} - `,algs[alg_keys[i]][j])
-					current_algset.push({...algs[alg_keys[i]][j], family:alg_keys[i]})
+					if (active_algs.indexOf(algs[alg_keys[i]][j].name)!==-1) {
+						console.log(`pushing:${j} - `,algs[alg_keys[i]][j])
+						current_algset.push({...algs[alg_keys[i]][j], family:alg_keys[i]})
+					}
 				}
 			}
 		}
@@ -76,15 +96,18 @@
 	}
 
 	function reEval () {
-				let nodeList = document.querySelectorAll(".families:checked")
-				console.log(`Nodelist`, nodeList)
-				active_families = Array.from(nodeList).map(a=>{
-					console.log("a",a.value)
-					return a.value
-				})
-				console.log(`active_families`, active_families)
+				// let nodeList = document.querySelectorAll(".families:checked")
+				// console.log(`Nodelist`, nodeList)
+				// active_families = Array.from(nodeList).map(a=>{
+				// 	console.log("a",a.value)
+				// 	return a.value
+				// })
+				// console.log(`active_families`, active_families)
+		let nodeList = document.querySelectorAll(".alg:checked")
+			active_algs = Array.from(nodeList).map(a=>{
+				return a.value
+			})
 				assembleAlgArray()
-
 	}
 
 
@@ -126,14 +149,27 @@
 
 
 <form id="families">
-	{#each alg_keys as alg, i}
-		<input type="checkbox" class="families" name="{alg}" value="{alg}" checked on:click={reEval}>
-		{i + 1}: {alg}<br />
+	{#each alg_keys as family, i}
+		<div class="family family_{family}">
+			<div class="family_head" on:click={()=>showHide[family] = !showHide[family]}>
+				<input type="checkbox" class="families" name="{family}" value="{family}" checked on:click|stopPropagation={switchChildren}>
+				{i + 1}: {family}
+				<span class:show={showHide[family]} class="downarrow"></span>
+			</div>
+			<div class="algs algs_{family} rolldown" class:show={showHide[family]}>
+			{#each Object.entries(algs[family]) as [key, alg]}
+				<div class="alg_row">
+					<input type="checkbox" class="alg" name="{family+"_"+alg.name}" value="{alg.name}" checked on:click={reEval}>{alg.name}
+				</div>
+			{/each}
+			</div>
+		</div>
 	{/each}
 </form>
 <div>{current_alg.name}</div>
 <button on:click={()=>reveal = !reveal}>{!reveal ? 'reveal' : 'hide'}</button>
 <div class:reveal>
+<div class="alg">{current_alg.alg}</div>
 {#each seq as step}
 	<span class="step" class:correct="{step.state === 'correct'}" class:mistake="{step.state === 'mistake'}">{step.move}</span>
 {/each}
@@ -156,8 +192,14 @@
 	margin: 3px;
 	color: white;
 }
+.alg {
+	color: white;
+}
 .reveal .step {
 	color: black;
+}
+.reveal .alg {
+	color: rgba(0,0,0,.3);
 }
 .step.correct {
 	background-color: green;
@@ -172,5 +214,42 @@
 }
 .failed {
 	background-color: rgba(255,0,0,40);
+}
+.rolldown {
+	max-height: 0;
+	overflow: hidden;
+	transition: all 0.5s ease;
+}
+.show.rolldown {
+	max-height: 250px;
+}
+.downarrow {
+    width: 0px;
+    height: 0px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid rgb(149, 171, 193);
+    transition: transform 0.6s ease 0s;
+    transform: rotate(0deg);
+    position: relative;
+		top: 10px;
+		left: 10px;
+}
+.downarrow.show {
+    transform: rotate(180deg);
+}
+.family_head {
+	background-color:#aaaaaa;
+	margin-bottom: 5px;
+	text-align: left;
+}
+.alg_row {
+	background-color:#dddddd;
+	text-align: left;
+	margin-bottom: 5px;
+}
+input[type=checkbox] {
+	margin-right: 5px;
+	margin-left: 5px;
 }
 </style>

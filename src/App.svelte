@@ -72,7 +72,7 @@ onMount(()=>{
 	}
 	#slot_alger {
 		float:left;
-		width: 50%;
+		width: 40%;
 	}
 	#slot_moves {
 		float:right;
