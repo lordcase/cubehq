@@ -4,5 +4,11 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"vetur.format.options.useTabs": true,
+		"editor.tabSize": 2,
+		"workbench.colorCustomizations": {
+			"tab.activeBackground": "#0000ff44",
+		}
+	},
 }
