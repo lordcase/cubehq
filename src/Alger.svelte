@@ -13,6 +13,8 @@
 	let endTime = 0
 	let solveTime = 0
 	let showHide = []
+	let continuous = true
+	let sliceMove = undefined
 
 	$: current_alg = '';
 	const alg_keys = Object.keys(algs)
@@ -37,6 +39,7 @@
 		solveTime = 0
 		currPos = 0
 		forceNext = ''
+		sliceMove  = undefined
 		nextStep = seq[currPos].move
 		for (let s in seq) {
 			seq[s].state = ''
@@ -52,6 +55,49 @@
 			startTime = Date.now()
 		}
 	}
+	const checkSlice = (m, mode) => {
+		if (mode === "prime") {
+			if (m === 'L') {
+				nextStep = forceNext = "R'"
+			} else if (m === "R'") {
+				nextStep = forceNext = "L"
+			} else {
+				return false
+			}
+			return true
+		} else if (mode === "normal") {
+			if (m === 'R') {
+				nextStep = forceNext = "L'"
+			} else if (m === "L'") {
+				nextStep = forceNext = "R"
+			} else {
+				return false
+			}
+			return true
+		} else {
+			if (m === 'L') {
+				nextStep = forceNext = "R'"
+			} else if (m === "R'") {
+				nextStep = forceNext = "L"
+			} else if (m === 'R') {
+				nextStep = forceNext = "L'"
+			} else if (m === "L'") {
+				nextStep = forceNext = "R"
+			} else {
+				return false
+			}
+			return true
+		}
+	}
+
+	function display_time(){
+				if(tstart != -1)
+					document.getElementById('time').innerHTML =
+						format_time(new Date().getTime() - tstart);
+				else
+					document.getElementById('time').innerHTML = 0.00;
+			}
+			
 	const switchChildren = (e) => {
 		const newState = e.target.checked
 		const inputs = document.querySelectorAll(`.algs_${e.target.name} input`)
@@ -115,13 +161,61 @@
 	export function handleMove(newMove) {
 		console.log("move:", newMove)
 		move = newMove
-		if (state === 'success' || state === 'failed') {
+		if ((state === 'success' || state === 'failed') && continuous) {
+			reset()
+		}
+		if ((state === 'success' || state === 'failed') && !continuous) {
 			return
 		} else if (forceNext !== '' && forceNext !== move) {
+			console.log("fail1")
 			fail()
 			return
+		} else if (seq[currPos].move.charAt(0) === 'M' && forceNext === '' ) {
+			if (sliceMove) {
+				console.log("branch0")
+				if (checkSlice(move, "any")) {
+					sliceMove = undefined
+					proceed()
+				} else {
+					console.log("fail5")
+					fail()
+				}
+			} else if (seq[currPos].move.length === 1) {
+				console.log("branch1a")
+				if (checkSlice(move, "normal")) {
+					proceed()
+				} else {
+					console.log("fail2")
+					fail()
+				}
+			} else if (seq[currPos].move.charAt(1) === "'"){
+				console.log("branch1b")
+				if (checkSlice(move, "prime")) {
+					if (seq[currPos].move.length === 3) {
+						sliceMove = move
+						forceNext = undefined
+					}
+					proceed()
+				} else {
+					console.log("fail3")
+					fail()
+				}
+			} else {
+				console.log("branch1c")
+				if (checkSlice(move, "any")) {
+					sliceMove = move
+					proceed()
+				} else {
+					console.log("fail4")
+					fail()
+				}
+			}
 		}	else if (move === forceNext || move === seq[currPos].move) {
 			forceNext = ''
+			if (sliceMove) {
+				return
+			}
+			sliceMove = ''
 			seq[currPos].state = 'correct'
 			currPos++
 			if (currPos === seq.length) {
@@ -137,7 +231,8 @@
 			proceed()
 			forceNext = move
 		} else {
-			fail(seq[currPos])
+			console.log("fail7")
+			fail()
 		}
 	}
 	onMount(()=>{
@@ -176,13 +271,15 @@
 <div class:success="{state === 'success'}" class:failed="{state === 'failed'}">
 	<div>move:{move}</div>
 	<div>currpos:{currPos}</div>
-	<!-- <div>next step:{nextStep}</div> -->
+	<div>next step:{nextStep}</div>
 	<div>Force Next:{forceNext}</div>
-	<div>Solve Timte:{solveTime}</div>
+	<div>Slice Move:{sliceMove}</div>
+	<div>Solve Time:{solveTime}</div>
 </div>
 <div>State:{state}
 <button on:click={reset} >retry</button>
 <button on:click={getRandomAlg} >New Alg</button>
+<button on:click={()=>continuous=!continuous} style="width: 100px;">{continuous?"Continuous":"Solo"}</button>
 </div>
 </div>
 

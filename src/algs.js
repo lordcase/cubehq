@@ -1,7 +1,7 @@
-	let defALg = {name: 'Unnamed', img: false, alg: 'Alg missing', desc: 'No description'}
+	let defALg = {name: 'Unnamed', img: false, alg: 'Alg missing', desc: 'No description', video: '#'}
 	let algs = {
 		oll2 : {
-			h : {'name':'H', img : '', alg: "F (R U R' U')3 F'", seq: "F R U R' U' R U R' U' R U R' U' F"},
+			h : {'name':'H', img : '', alg: "F (R U R' U')3 F'", seq: "F R U R' U' R U R' U' R U R' U' F'"},
 			pi : {'name':'Pi', img : '', alg:"R U2 (R2 U' R2 U' R2) U2 R", seq: "R U2 R2 U' R2 U' R2 U2 R"},
 			sune :{'name':'Sune', img : '', alg: "R U R' U R U2 R'", seq: "R U R' U R U2 R'"},
 			antisune : {'name':'Antisune', img : '', alg:"L' U' L U' L' U2 L", seq: "L' U' L U' L' U2 L"},
@@ -16,8 +16,8 @@
 		pll2 : {
 			te1: {'name':'3-edge cycle 1', img : '', alg:"R U' R U R U R U' R' U' R2", seq: "R U' R U R U R U' R' U' R2"},
 			te2: {'name':'3-edge cycle 2', img : '', alg: "R2 U R U R' U' R' U' R' U R'", seq: "R2 U R U R' U' R' U' R' U R'"},
-			feopp: {'name':'4-Edges opposites switch', img : '', alg: "M2 U' M2 U2 M2 U' M2", seq: "M2 U' M2 U2 M2 U' M2"},
-			feadj: {'name':'4-Edges adjacent switch', img : '', alg: "M' U' M2 U' M2 U' M' U2 M2", seq: "M' U' M2 U' M2 U' M' U2 M2"},
+			feopp: {'name':'4-Edges opposites switch', img : '', alg: "M2 U' M2 U2 M2 U' M2", seq: "M2 D' M2 U2 M2 D' M2"},
+			feadj: {'name':'4-Edges adjacent switch', img : '', alg: "M' U' M2 U' M2 U' M' U2 M2", seq: "M' F' M2 B' M2 F' M' D2 M2"},
 		}
 	}
 	let alg_keys = Object.keys(algs)
