@@ -2,14 +2,19 @@
 	import { onMount } from 'svelte';
 	import {algs} from './algs.js'
 	import { createEventDispatcher } from 'svelte';
-	
+	import SparkMD5 from 'spark-md5'
+
+	let defALg = {name: 'Unnamed', img: false, alg: 'Alg missing', desc: 'No description', video: false}
 	let currPos = 0
 	var move = ''
 	let forceNext = ''
 	let nextStep = ''
 	let state = 'idle'
 	let reveal = false
+	let repeat = false
+	let repeatFreq = 20
 	let startTime = 0
+	let timeSlot
 	let endTime = 0
 	let solveTime = 0
 	let showHide = []
@@ -17,26 +22,31 @@
 	let sliceMove = undefined
 
 	$: current_alg = '';
-	const alg_keys = Object.keys(algs)
+	const alg_f_keys = Object.keys(algs)
 	const alg_list = []
 	for (let f in algs) {
 		for (let a in algs[f]) {
 			alg_list.push(algs[f][a].name)
 		}
 	}
-	var active_families = alg_keys
+	var active_families = alg_f_keys
 	var active_algs = alg_list
 	console.log("args",active_algs)
 	var alg_arr = assembleAlgArray()
 	const dispatch = createEventDispatcher();
 	let seq = []
-	console.log(alg_keys)
+	console.log(alg_f_keys)
 	console.log(alg_list)
 	const reset = () => {
 		state = 'idle'
 		startTime = 0
 		endTime = 0
 		solveTime = 0
+		if (repeat) {
+			console.log("reset repeat")
+			clearInterval(repeat)
+		}
+		repeat = false
 		currPos = 0
 		forceNext = ''
 		sliceMove  = undefined
@@ -47,12 +57,14 @@
 	}
 	const fail = () => {
 		state = "failed"
+		console.log("rail", repeat)
+		clearInterval(repeat)
+		repeat = false
 		seq[currPos].state = 'mistake'
 	}
 	const proceed = () => {
 		if (state === 'idle') {
 			state = 'in progress'
-			startTime = Date.now()
 		}
 	}
 	const checkSlice = (m, mode) => {
@@ -89,15 +101,30 @@
 			return true
 		}
 	}
+	const startTimer = () => {
+		if (!repeat) {
+			startTime = new Date().getTime()
+			timeSlot.innerHTML = "0.00"
+			displayTime()
+			repeat = setInterval(displayTime, repeatFreq)
+		}
 
-	function display_time(){
-				if(tstart != -1)
-					document.getElementById('time').innerHTML =
-						format_time(new Date().getTime() - tstart);
-				else
-					document.getElementById('time').innerHTML = 0.00;
-			}
-			
+	}
+	function displayTime(){
+		console.log("dtime", repeat)
+		timeSlot.innerHTML =
+			formatTime(new Date().getTime() - startTime);
+	}
+	function formatTime(millis){
+		var hrs = (millis - millis % 3600000 ) / 3600000;
+		var min = ((millis - millis % 60000 ) / 60000) % 60;
+		var sec = ((millis - millis % 1000 ) * 0.001) % 60;
+		var hnd = ((millis - millis % 10 ) * 0.1) % 100;
+		return	   (hrs > 0 ? hrs + (min < 10 ? ":0" : ":") : "" ) +
+		(min > 0 || hrs > 0 ? min + (sec < 10 ? ":0" : ":") : "" ) +
+			sec + "." + (hnd < 10 ? "0" : "") + hnd;
+	}			
+
 	const switchChildren = (e) => {
 		const newState = e.target.checked
 		const inputs = document.querySelectorAll(`.algs_${e.target.name} input`)
@@ -106,7 +133,12 @@
 		}
 		reEval()
 	}
-
+	const selectAlg = (e) => {
+		current_alg = algs[e.target.dataset.family][e.target.dataset.alg]
+		dispatch("newalg", current_alg)
+		seq = current_alg.seq.split(' ').map(a=>({state:'', move:a}))
+		reset()
+	}
 
 	export function getRandomAlg() {
 		let alg_rnd_key = Math.floor(Math.random() * alg_arr.length)
@@ -124,14 +156,14 @@
 	
 	function assembleAlgArray () {
 		let current_algset = []
-		for (let i in alg_keys){
-			console.log(`curr_key:${i} - ${alg_keys[i]}`)
-			if (active_families.indexOf(alg_keys[i])!==-1) {
-				console.log(`curr_key:${i} - ${alg_keys[i]} bingo`)
-				for (let j in algs[alg_keys[i]]) {
-					if (active_algs.indexOf(algs[alg_keys[i]][j].name)!==-1) {
-						console.log(`pushing:${j} - `,algs[alg_keys[i]][j])
-						current_algset.push({...algs[alg_keys[i]][j], family:alg_keys[i]})
+		for (let i in alg_f_keys){
+			console.log(`curr_key:${i} - ${alg_f_keys[i]}`)
+			if (active_families.indexOf(alg_f_keys[i])!==-1) {
+				console.log(`curr_key:${i} - ${alg_f_keys[i]} bingo`)
+				for (let j in algs[alg_f_keys[i]]) {
+					if (active_algs.indexOf(algs[alg_f_keys[i]][j].name)!==-1) {
+						console.log(`pushing:${j} - `,algs[alg_f_keys[i]][j])
+						current_algset.push({...defALg, ...algs[alg_f_keys[i]][j], family:alg_f_keys[i], id:j})
 					}
 				}
 			}
@@ -164,6 +196,7 @@
 		if ((state === 'success' || state === 'failed') && continuous) {
 			reset()
 		}
+		startTimer()
 		if ((state === 'success' || state === 'failed') && !continuous) {
 			return
 		} else if (forceNext !== '' && forceNext !== move) {
@@ -220,8 +253,7 @@
 			currPos++
 			if (currPos === seq.length) {
 				state = 'success'
-				endTime = Date.now()
-				solveTime = endTime - startTime
+				clearInterval(repeat)
 				nextStep = ''
 			} else {
 				proceed()
@@ -238,49 +270,60 @@
 	onMount(()=>{
 		
 		current_alg = getRandomAlg()
+		console.log("begorrah")
+		console.log(alg_arr)
+		timeSlot = document.getElementById('time')
 	})
 </script>
 
 
 
 <form id="families">
-	{#each alg_keys as family, i}
+	{#each alg_f_keys as family, i}
 		<div class="family family_{family}">
 			<div class="family_head" on:click={()=>showHide[family] = !showHide[family]}>
 				<input type="checkbox" class="families" name="{family}" value="{family}" checked on:click|stopPropagation={switchChildren}>
 				{i + 1}: {family}
-				<span class:show={showHide[family]} class="downarrow"></span>
+				<div class="icons"><i class="fas {showHide[family] ? "fa-sort-up":"fa-sort-down"}"></i></div>
 			</div>
 			<div class="algs algs_{family} rolldown" class:show={showHide[family]}>
 			{#each Object.entries(algs[family]) as [key, alg]}
-				<div class="alg_row">
+				<label><div class="alg_row">
 					<input type="checkbox" class="alg" name="{family+"_"+alg.name}" value="{alg.name}" checked on:click={reEval}>{alg.name}
-				</div>
+					<div class="icons"><i class="fas fa-angle-double-down" data-family="{family}" data-alg="{key}" on:click|preventDefault|stopPropagation={selectAlg}></i></div>
+				</div></label>
 			{/each}
 			</div>
 		</div>
 	{/each}
 </form>
-<div>{current_alg.name}</div>
-<button on:click={()=>reveal = !reveal}>{!reveal ? 'reveal' : 'hide'}</button>
-<div class:reveal>
-<div class="alg">{current_alg.alg}</div>
-{#each seq as step}
-	<span class="step" class:correct="{step.state === 'correct'}" class:mistake="{step.state === 'mistake'}">{step.move}</span>
-{/each}
-<div class:success="{state === 'success'}" class:failed="{state === 'failed'}">
-	<div>move:{move}</div>
-	<div>currpos:{currPos}</div>
-	<div>next step:{nextStep}</div>
-	<div>Force Next:{forceNext}</div>
-	<div>Slice Move:{sliceMove}</div>
-	<div>Solve Time:{solveTime}</div>
-</div>
-<div>State:{state}
-<button on:click={reset} >retry</button>
-<button on:click={getRandomAlg} >New Alg</button>
-<button on:click={()=>continuous=!continuous} style="width: 100px;">{continuous?"Continuous":"Solo"}</button>
-</div>
+<div>
+	<div class="alg_name">Name of Alg: <strong>{current_alg.name}</strong>
+		{#if current_alg.video}
+			<a href={current_alg.video} target="_blank">(video)</a>
+		{/if}
+	</div>
+	<button on:click={()=>reveal = !reveal}>{!reveal ? 'Reveal' : 'Hide'} steps</button>
+	<div class:reveal>
+		<div class="alg">{current_alg.alg}</div>
+		{#each seq as step}
+			<span class="step" class:correct="{step.state === 'correct'}" class:mistake="{step.state === 'mistake'}">{step.move}</span>
+		{/each}
+	</div>
+	<div class:success="{state === 'success'}" class:failed="{state === 'failed'}">
+		<div>Last move:{move}</div>
+		<div>Steps:{currPos}</div>
+		<!-- <div>next step:{nextStep}</div> -->
+		<!-- <div>Force Next:{forceNext}</div> -->
+		<!-- <div>Slice Move:{sliceMove}</div> -->
+		<div>Solve Time: <span id="time"></span></div>
+	</div>
+	<div>
+		<!-- State:{state} -->
+		<button on:click={reset} >Reset Alg</button>
+		<button on:click={getRandomAlg} >New Alg</button><br>
+		<button on:click={()=>continuous=!continuous} style="width: 200px;">Mode:{continuous?"Continuous":"Solo"}</button>
+	</div>
 </div>
 
 <style>
@@ -291,6 +334,10 @@
 }
 .alg {
 	color: white;
+}
+.alg_name {
+	margin: 7px;
+	background: rgba(220,220,220,.5);
 }
 .reveal .step {
 	color: black;
@@ -303,14 +350,16 @@
 	color: white;
 }
 .step.mistake {
-	background-color: red;
+	background-color: rgba(255,0,0,.8);
 	color: white;
 }
 .success {
-	background-color: rgba(0,255,0,40);
+	background-color: green;
+	color: white;
 }
 .failed {
-	background-color: rgba(255,0,0,40);
+	background-color: rgba(255,0,0,.8);
+	color: white;
 }
 .rolldown {
 	max-height: 0;
@@ -344,6 +393,19 @@
 	background-color:#dddddd;
 	text-align: left;
 	margin-bottom: 5px;
+}
+.icons {
+	display: inline-block;
+	float:right;
+	padding-right: 10px;
+}
+.fas {
+	padding-left: 5px;
+	padding-right: 5px;
+
+}
+.alg_row .fas:hover {
+	background: rgba(255,140,140,.3);
 }
 input[type=checkbox] {
 	margin-right: 5px;

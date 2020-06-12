@@ -38,7 +38,6 @@ onMount(()=>{
 		textarea = document.querySelector('textarea');
 		AlgerComponent.getRandomAlg()
 })
-
 </script>
 
 <svelte:body on:keypress={catchKeystroke} />
@@ -53,9 +52,20 @@ onMount(()=>{
 <div id="slot_connect">
 	<CubeConnect on:cubemove={handleMove}/>
 </div>
-
+<div class="clear"></div>
 </main>
+<footer>
+TODO
+<ul>
+<li>pics</li>
+<li>cuber insert</li>
+<li>random shuffle alg</li>
+<li>save preferences</li>
+<li>save best times</li>
+<li>audio feedback - success / failure</li>
 
+</ul>
+</footer>
 <style>
 	main {
 		text-align: center;
@@ -84,8 +94,17 @@ onMount(()=>{
 		right: 0;
 		width: 350px;
 		height: 300px;
+		border-radius: 30px;
+		background: rgba(0,170,170,.3);
+		padding: 20px;
 	}
-
+	.clear {
+		clear: both;
+	}
+	footer {
+		margin-top: 20px;
+		background: #088;
+	}
 	@media (min-width: 640px) {
 		main {
 			max-width: none;
