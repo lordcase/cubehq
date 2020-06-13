@@ -92,7 +92,6 @@ TODO
 		position: fixed;
 		bottom: 0;
 		right: 0;
-		width: 350px;
 		height: 300px;
 		border-radius: 30px;
 		background: rgba(0,170,170,.3);

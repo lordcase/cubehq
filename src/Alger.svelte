@@ -133,13 +133,18 @@
 		}
 		reEval()
 	}
+	const hideAllFamilies = () => {
+		for (let f in showHide) {
+			showHide[f] = false
+		}
+	}
 	const selectAlg = (e) => {
 		current_alg = algs[e.target.dataset.family][e.target.dataset.alg]
 		dispatch("newalg", current_alg)
 		seq = current_alg.seq.split(' ').map(a=>({state:'', move:a}))
+		hideAllFamilies()
 		reset()
 	}
-
 	export function getRandomAlg() {
 		let alg_rnd_key = Math.floor(Math.random() * alg_arr.length)
 		if (alg_arr.length < 1) {
@@ -297,12 +302,12 @@
 		</div>
 	{/each}
 </form>
-<div>
-	<div class="alg_name">Name of Alg: <strong>{current_alg.name}</strong>
-		{#if current_alg.video}
-			<a href={current_alg.video} target="_blank">(video)</a>
-		{/if}
-	</div>
+<div class="alg_name" style="position: relative;">Name of Alg: <strong>{current_alg.name}</strong>
+	{#if current_alg.video}
+		<a href={current_alg.video} target="_blank" class="play_video"><i class="fab fa-youtube" alt="video"></i></a>
+	{/if}
+</div>
+<div style="clear:both;">
 	<button on:click={()=>reveal = !reveal}>{!reveal ? 'Reveal' : 'Hide'} steps</button>
 	<div class:reveal>
 		<div class="alg">{current_alg.alg}</div>
@@ -310,6 +315,13 @@
 			<span class="step" class:correct="{step.state === 'correct'}" class:mistake="{step.state === 'mistake'}">{step.move}</span>
 		{/each}
 	</div>
+</div>
+<div style="float: right; width: 25%;">
+	{#if current_alg.alg}
+	<img src={`http://cube.rider.biz/visualcube.php?fmt=svg&size=150&pzl=3&bg=w&cc=n&view=plan&alg=${current_alg.alg}&nocache`} alt="cube to solve">
+	{/if}
+</div>
+<div style="float: left; width: 75%;">
 	<div class:success="{state === 'success'}" class:failed="{state === 'failed'}">
 		<div>Last move:{move}</div>
 		<div>Steps:{currPos}</div>
@@ -337,7 +349,28 @@
 }
 .alg_name {
 	margin: 7px;
-	background: rgba(220,220,220,.5);
+	background: rgba(0,132,132,.5);
+	color: white;
+}
+.alg_name strong {
+	font-size: 1.2rem;
+	background: white;
+	margin: 3px 6px 2px 6px;
+	font-weight: 300;
+	padding: 0 3px;
+}
+.alg_name a {
+	color:white;
+}
+.play_video {
+	position: absolute;
+	right: 10px;
+	top: 1px;
+	font-size:26px;
+	line-height:26px;
+}
+.play_video:hover {
+	color: red;
 }
 .reveal .step {
 	color: black;

@@ -5,7 +5,7 @@
 			sune :{'name':'Sune', img : '', alg: "R U R' U R U2 R'", seq: "R U R' U R U2 R'", video: "https://youtu.be/GhmYBgLoQQg?t=112"},
 			antisune : {'name':'Antisune', img : '', alg:"L' U' L U' L' U2 L", seq: "L' U' L U' L' U2 L", video: "https://youtu.be/GhmYBgLoQQg?t=142"},
 			l :{'name':'L', img : '', alg: "x (R' U R D') (R' U' R D)", seq: "R' F R B' R' F' R B", video: "https://www.youtube.com/watch?v=GhmYBgLoQQg&list=PLI24ciRbl8BUHEeOBaLXY4GpaVXSULYp4&t=224s"},
-			t :{'name':'T', img : '', alg: "x (L U R' U') (L' U R U')", seq: "L F R' F' L' F R F'", video: "https://www.youtube.com/watch?v=GhmYBgLoQQg&list=PLI24ciRbl8BUHEeOBaLXY4GpaVXSULYp4&t=275s"},
+			t :{'name':'T', img : '', alg: "x (L U R' U') (L' U R U') x'", seq: "L F R' F' L' F R F'", video: "https://www.youtube.com/watch?v=GhmYBgLoQQg&list=PLI24ciRbl8BUHEeOBaLXY4GpaVXSULYp4&t=275s"},
 			u :{'name':'U', img : '', alg: "R2 D R' U2 R D' R' U2 R'", seq: "R2 D R' U2 R D' R' U2 R", video: "https://www.youtube.com/watch?v=GhmYBgLoQQg&list=PLI24ciRbl8BUHEeOBaLXY4GpaVXSULYp4&t=320s"},
 		},
 		pll1 : {
