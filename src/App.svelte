@@ -10,6 +10,7 @@ let seq
 let newMove
 
 	function catchKeystroke(e) {
+		return
 		switch (state) {
 			case "await":
 				if (e.key === " ") {
@@ -55,16 +56,26 @@ onMount(()=>{
 <div class="clear"></div>
 </main>
 <footer>
-TODO
+<!-- TODO
 <ul>
-<li>pics</li>
 <li>cuber insert</li>
 <li>random shuffle alg</li>
 <li>save preferences</li>
 <li>save best times</li>
-<li>audio feedback - success / failure</li>
+<li>free train</li>
+<li>record session</li>
+<li>add more algs</li>
+<li>add custom algs, in arrays</li>
+<li>validate alg objects</li>
+<li>responisivity</li>
+<li>code cleanup</li>
+<li>turn per second</li>
+<li>avg alg time</li>
+<li>timer rewrite</li>
+<li>img cache</li>
 
-</ul>
+</ul> --><br />
+Home of the project: <a href="https://github.com/lordcase/cubehq" target="_blank">https://github.com/lordcase/cubehq</a><br /><br />
 </footer>
 <style>
 	main {
@@ -82,11 +93,12 @@ TODO
 	}
 	#slot_alger {
 		float:left;
-		width: 40%;
+		width: 50%;
+		min-width: 500px;
 	}
 	#slot_moves {
 		float:right;
-		width: 50%;
+		width: 40%;
 	}
 	#slot_connect {
 		position: fixed;

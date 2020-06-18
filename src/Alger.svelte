@@ -1,12 +1,12 @@
 <script>
 	import { onMount } from 'svelte';
-	import {algs} from './algs.js'
+	import {base_algs} from './algs.js'
 	import { createEventDispatcher } from 'svelte';
 	import SparkMD5 from 'spark-md5'
 
-	let defALg = {name: 'Unnamed', img: false, alg: 'Alg missing', desc: 'No description', video: false}
+	let defAlg = {name: 'Unnamed', img: false, alg: 'Alg_missing', seq: 'Sequence_missing', desc: 'No description', video: false}
 	let currPos = 0
-	var move = ''
+	let move = ''
 	let forceNext = ''
 	let nextStep = ''
 	let state = 'idle'
@@ -15,33 +15,61 @@
 	let repeatFreq = 20
 	let startTime = 0
 	let timeSlot
-	let endTime = 0
-	let solveTime = 0
 	let showHide = []
+	let seq = []
 	let continuous = true
 	let sliceMove = undefined
+	let soundMove = new Audio('/sounds/141121__eternitys__interface1.wav')
+	const soundFail = new Audio('/sounds/142608__autistic-lucario__error.wav')
+	const soundSuccess = new Audio('/sounds/426889__thisusernameis__beep3.wav')
 
-	$: current_alg = '';
-	const alg_f_keys = Object.keys(algs)
-	const alg_list = []
-	for (let f in algs) {
-		for (let a in algs[f]) {
-			alg_list.push(algs[f][a].name)
+	let errorMsg = ""
+	let blah = ""
+
+	let current_alg = ''
+	let current_alg_id = ''
+
+	let alg_f_keys = ["custom"] //alg family keys
+	let alg_f_grouping = {"custom":[]} //for hierarchical representation
+	let alg_map = new Map() //new container for the algs
+	let alg_list = [] // mutable array for active args
+	console.log(typeof alg_f_keys)
+
+	//populate alg families, hydrate & hash algs from base
+	for (let f in base_algs) {
+		alg_f_keys.push(f)
+		alg_f_grouping[f] = []
+		for (let a in base_algs[f]['algs']) {
+			let temp_alg = {...defAlg, ...base_algs[f]['algs'][a]}
+			let alg_hash = SparkMD5.hash(JSON.stringify(temp_alg))
+			alg_map.set(alg_hash,temp_alg)
+			// algs[f][alg_hash] = temp_alg
+			alg_list.push(alg_hash)
+			alg_f_grouping[f].push(alg_hash)
 		}
 	}
-	var active_families = alg_f_keys
-	var active_algs = alg_list
-	console.log("args",active_algs)
-	var alg_arr = assembleAlgArray()
+
+	//debug logs
+	const dlog = () => {
+		console.log("base algs", base_algs)
+		console.log("family keys", alg_f_keys)
+		console.log("family grouping", alg_f_grouping)
+		console.log("map", alg_map)
+		console.log("alg list", alg_list)
+	}
+
+	dlog()
+	
+	let active_families = alg_f_keys
+	let active_algs = alg_list
+
+	assembleAlgArray()
 	const dispatch = createEventDispatcher();
-	let seq = []
-	console.log(alg_f_keys)
-	console.log(alg_list)
+	
+	//reset current alg
 	const reset = () => {
 		state = 'idle'
 		startTime = 0
-		endTime = 0
-		solveTime = 0
 		if (repeat) {
 			console.log("reset repeat")
 			clearInterval(repeat)
@@ -55,18 +83,22 @@
 			seq[s].state = ''
 		}
 	}
+	//handle fails
 	const fail = () => {
 		state = "failed"
+		soundFail.play()
 		console.log("rail", repeat)
 		clearInterval(repeat)
 		repeat = false
 		seq[currPos].state = 'mistake'
 	}
+	//handle correct moves
 	const proceed = () => {
 		if (state === 'idle') {
 			state = 'in progress'
 		}
 	}
+	//handle slice moves like M, M'', S etc.
 	const checkSlice = (m, mode) => {
 		if (mode === "prime") {
 			if (m === 'L') {
@@ -101,6 +133,7 @@
 			return true
 		}
 	}
+	//start counter
 	const startTimer = () => {
 		if (!repeat) {
 			startTime = new Date().getTime()
@@ -108,13 +141,17 @@
 			displayTime()
 			repeat = setInterval(displayTime, repeatFreq)
 		}
-
 	}
-	function displayTime(){
+	// display time
+	function timeTimer() {
+		
+	}
+	function displayTime() {
 		console.log("dtime", repeat)
 		timeSlot.innerHTML =
 			formatTime(new Date().getTime() - startTime);
 	}
+	//format time
 	function formatTime(millis){
 		var hrs = (millis - millis % 3600000 ) / 3600000;
 		var min = ((millis - millis % 60000 ) / 60000) % 60;
@@ -124,7 +161,7 @@
 		(min > 0 || hrs > 0 ? min + (sec < 10 ? ":0" : ":") : "" ) +
 			sec + "." + (hnd < 10 ? "0" : "") + hnd;
 	}			
-
+	//select / deselect all children algs in a family
 	const switchChildren = (e) => {
 		const newState = e.target.checked
 		const inputs = document.querySelectorAll(`.algs_${e.target.name} input`)
@@ -133,71 +170,102 @@
 		}
 		reEval()
 	}
+	//close all family divs 
 	const hideAllFamilies = () => {
 		for (let f in showHide) {
 			showHide[f] = false
 		}
 	}
+	//create move sequence for alg
+	const createSequence = () => current_alg.seq.split(' ').map(a=>({state:'', move:a}))
+	//select a specific alg for practice directly
 	const selectAlg = (e) => {
-		current_alg = algs[e.target.dataset.family][e.target.dataset.alg]
+		current_alg = alg_map.get(e.target.dataset.id)
 		dispatch("newalg", current_alg)
-		seq = current_alg.seq.split(' ').map(a=>({state:'', move:a}))
+		seq = createSequence()
 		hideAllFamilies()
 		reset()
 	}
+	const addAlg = () => {
+		console.log(document.getElementById("alg_def").value)
+		try {
+			let alg_def = JSON.parse(document.getElementById("alg_def").value)
+			console.log(alg_def)
+			let temp_alg = {...defAlg, ...alg_def}
+			let alg_hash = SparkMD5.hash(JSON.stringify(temp_alg))
+			alg_map.set(alg_hash,temp_alg)
+			// algs[f][alg_hash] = temp_alg
+			alg_list.push(alg_hash)
+			alg_f_grouping["custom"].push(alg_hash)
+			assembleAlgArray()
+			alg_f_grouping = alg_f_grouping
+		}
+		catch(error) {
+			errorMsg= error
+		}
+	}
+	//remove an alg from the list - under construction
+	const removeAlg = (e) => {
+		alg_map.delete(e.target.dataset.id)
+		alg_f_grouping
+		for( let i = 0; i < alg_f_grouping[e.target.dataset.family].length; i++) {
+			if ( alg_f_grouping[e.target.dataset.family][i] === e.target.dataset.id) {
+				alg_f_grouping[e.target.dataset.family].splice(i, 1); i--
+			}
+		}
+		alg_f_grouping = alg_f_grouping
+		assembleAlgArray()
+		dlog()
+	}
+
+	//select a random alg from the active list
 	export function getRandomAlg() {
-		let alg_rnd_key = Math.floor(Math.random() * alg_arr.length)
-		if (alg_arr.length < 1) {
+		if (alg_list.length < 1) {
 			return
-		}	else if (!current_alg || alg_arr[alg_rnd_key].name != current_alg.name) {
-			current_alg = alg_arr[alg_rnd_key]
+		}
+		let alg_rnd_key = Math.floor(Math.random() * alg_list.length)
+		if (!current_alg || alg_list[alg_rnd_key].name != current_alg.name) {
+			current_alg = alg_list[alg_rnd_key]
 			dispatch("newalg", current_alg)
-			seq = current_alg.seq.split(' ').map(a=>({state:'', move:a}))
+			seq = createSequence()
 			reset()
-		} else if (current_alg && alg_arr.length > 1){
+		} else if (current_alg && alg_list.length > 1){
 			getRandomAlg()
 		}
 	}
-	
+	//assemble the alg array based on active families
 	function assembleAlgArray () {
 		let current_algset = []
 		for (let i in alg_f_keys){
 			console.log(`curr_key:${i} - ${alg_f_keys[i]}`)
 			if (active_families.indexOf(alg_f_keys[i])!==-1) {
 				console.log(`curr_key:${i} - ${alg_f_keys[i]} bingo`)
-				for (let j in algs[alg_f_keys[i]]) {
-					if (active_algs.indexOf(algs[alg_f_keys[i]][j].name)!==-1) {
-						console.log(`pushing:${j} - `,algs[alg_f_keys[i]][j])
-						current_algset.push({...defALg, ...algs[alg_f_keys[i]][j], family:alg_f_keys[i], id:j})
+				for (let j in alg_f_grouping[alg_f_keys[i]]) {
+					let curr_id = alg_f_grouping[alg_f_keys[i]][j]
+					if (alg_map.has(curr_id)) {
+						console.log(`pushing:${curr_id} - `,alg_map.get(curr_id))
+						current_algset.push({...defAlg, ...alg_map.get(curr_id), family:alg_f_keys[i], id:j})
 					}
 				}
 			}
 		}
-				console.log("current_algset",current_algset)
-				alg_arr = current_algset
+		console.log("current_algset",current_algset)
+		alg_list = current_algset
 		return current_algset
 	}
 
+	//refresh list of active algs
 	function reEval () {
-				// let nodeList = document.querySelectorAll(".families:checked")
-				// console.log(`Nodelist`, nodeList)
-				// active_families = Array.from(nodeList).map(a=>{
-				// 	console.log("a",a.value)
-				// 	return a.value
-				// })
-				// console.log(`active_families`, active_families)
-		let nodeList = document.querySelectorAll(".alg:checked")
-			active_algs = Array.from(nodeList).map(a=>{
-				return a.value
-			})
 				assembleAlgArray()
 	}
 
 
-
+	//handle all move events
 	export function handleMove(newMove) {
 		console.log("move:", newMove)
 		move = newMove
+		soundMove = new Audio('/sounds/141121__eternitys__interface1.wav')
+		// soundMove.play()
 		if ((state === 'success' || state === 'failed') && continuous) {
 			reset()
 		}
@@ -258,6 +326,7 @@
 			currPos++
 			if (currPos === seq.length) {
 				state = 'success'
+				soundSuccess.play()
 				clearInterval(repeat)
 				nextStep = ''
 			} else {
@@ -272,12 +341,14 @@
 			fail()
 		}
 	}
+
+	//last tuches after document has loaded
 	onMount(()=>{
 		
 		current_alg = getRandomAlg()
-		console.log("begorrah")
-		console.log(alg_arr)
+		console.log("alg_map",alg_map)
 		timeSlot = document.getElementById('time')
+		blah = JSON.stringify(defAlg)
 	})
 </script>
 
@@ -285,6 +356,7 @@
 
 <form id="families">
 	{#each alg_f_keys as family, i}
+		{#if alg_f_grouping[family].length > 0}
 		<div class="family family_{family}">
 			<div class="family_head" on:click={()=>showHide[family] = !showHide[family]}>
 				<input type="checkbox" class="families" name="{family}" value="{family}" checked on:click|stopPropagation={switchChildren}>
@@ -292,14 +364,18 @@
 				<div class="icons"><i class="fas {showHide[family] ? "fa-sort-up":"fa-sort-down"}"></i></div>
 			</div>
 			<div class="algs algs_{family} rolldown" class:show={showHide[family]}>
-			{#each Object.entries(algs[family]) as [key, alg]}
+			{#each alg_f_grouping[family] as key}
 				<label><div class="alg_row">
-					<input type="checkbox" class="alg" name="{family+"_"+alg.name}" value="{alg.name}" checked on:click={reEval}>{alg.name}
-					<div class="icons"><i class="fas fa-angle-double-down" data-family="{family}" data-alg="{key}" on:click|preventDefault|stopPropagation={selectAlg}></i></div>
+					<input type="checkbox" class="alg" name="{family+"_"+alg_map.get(key).name}" value="{alg_map.get(key).name}" checked on:click={reEval}>{alg_map.get(key).name}
+					<div class="icons">
+						<i class="far fa-minus-square" data-family="{family}" data-id="{key}" on:click|preventDefault|stopPropagation={removeAlg}></i>
+						<i class="fas fa-angle-double-down" data-family="{family}" data-id="{key}" on:click|preventDefault|stopPropagation={selectAlg}></i>
+					</div>
 				</div></label>
 			{/each}
 			</div>
 		</div>
+	{/if}
 	{/each}
 </form>
 <div class="alg_name" style="position: relative;">Name of Alg: <strong>{current_alg.name}</strong>
@@ -318,7 +394,9 @@
 </div>
 <div style="float: right; width: 25%;">
 	{#if current_alg.alg}
-	<img src={`http://cube.rider.biz/visualcube.php?fmt=svg&size=150&pzl=3&bg=w&cc=n&view=plan&alg=${current_alg.alg}&nocache`} alt="cube to solve">
+		<img src={`http://cube.rider.biz/visualcube.php?fmt=svg&size=150&pzl=3&bg=w&cc=n&case=${current_alg.alg}&nocache`} alt="cube to solve">
+		<br>
+		<img src={`http://cube.rider.biz/visualcube.php?fmt=svg&size=150&pzl=3&bg=w&cc=n&view=plan&case=${current_alg.alg}&nocache`} alt="cube to solve">
 	{/if}
 </div>
 <div style="float: left; width: 75%;">
@@ -335,6 +413,13 @@
 		<button on:click={reset} >Reset Alg</button>
 		<button on:click={getRandomAlg} >New Alg</button><br>
 		<button on:click={()=>continuous=!continuous} style="width: 200px;">Mode:{continuous?"Continuous":"Solo"}</button>
+		<div>
+			<textarea type="text" value={blah} id="alg_def" cols="40" rows="3"></textarea>
+			<button on:click={addAlg}>Add alg</button>
+			{#if errorMsg}
+			Error: {errorMsg}
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -358,6 +443,7 @@
 	margin: 3px 6px 2px 6px;
 	font-weight: 300;
 	padding: 0 3px;
+	line-height: 29px;
 }
 .alg_name a {
 	color:white;
