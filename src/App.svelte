@@ -2,6 +2,7 @@
 import { onMount } from 'svelte';
 import Alger from './Alger.svelte'
 import CubeConnect from './CubeConnect.svelte'
+// import Cuber from './Cuber.svelte'
 
 var state = "await"
 var textarea
@@ -24,19 +25,16 @@ let newMove
 	}
 
 function handleMove (event) {
-	textarea.value += ` ${event.detail.move.notation}`;
 	AlgerComponent.handleMove(event.detail.move.notation)
 }
 function handleNewAlg (event) {
 	state = "newalg"
 	console.log(event)
 	seq = event.detail.seq.split(" ")
-	if (textarea) textarea.value = ''
 	console.log(seq)
 }
 
 onMount(()=>{
-		textarea = document.querySelector('textarea');
 		AlgerComponent.getRandomAlg()
 })
 </script>
@@ -48,7 +46,7 @@ onMount(()=>{
 	<Alger bind:this={AlgerComponent} on:newalg={handleNewAlg}></Alger>
 </div>
 <div id="slot_moves">
-	<textarea class="textarea is-primary" type="text" placeholder="Primary textarea"></textarea>
+	<!--Cuber /-->
 </div>
 <div id="slot_connect">
 	<CubeConnect on:cubemove={handleMove}/>
@@ -59,13 +57,11 @@ onMount(()=>{
 <!-- TODO
 <ul>
 <li>cuber insert</li>
-<li>random shuffle alg</li>
 <li>save preferences</li>
 <li>save best times</li>
 <li>free train</li>
 <li>record session</li>
 <li>add more algs</li>
-<li>add custom algs, in arrays</li>
 <li>validate alg objects</li>
 <li>responisivity</li>
 <li>code cleanup</li>
@@ -73,15 +69,17 @@ onMount(()=>{
 <li>avg alg time</li>
 <li>timer rewrite</li>
 <li>img cache</li>
+<li>include svg cubes</li>
+<li>auto next on success</li>
+<li>finger tricks</li>
 
-</ul> --><br />
-Home of the project: <a href="https://github.com/lordcase/cubehq" target="_blank">https://github.com/lordcase/cubehq</a><br /><br />
+</ul> -->
+Home of the project: <a href="https://github.com/lordcase/cubehq" target="_blank">https://github.com/lordcase/cubehq</a>
 </footer>
 <style>
 	main {
 		text-align: center;
 		padding: 1em;
-		max-width: 240px;
 		margin: 0 auto;
 	}
 
@@ -93,18 +91,17 @@ Home of the project: <a href="https://github.com/lordcase/cubehq" target="_blank
 	}
 	#slot_alger {
 		float:left;
-		width: 50%;
-		min-width: 500px;
+		width: 70%;
 	}
 	#slot_moves {
 		float:right;
-		width: 40%;
+		width: 25%;
 	}
 	#slot_connect {
 		position: fixed;
 		bottom: 0;
 		right: 0;
-		height: 300px;
+		/* height: 300px; */
 		border-radius: 30px;
 		background: rgba(0,170,170,.3);
 		padding: 20px;
@@ -115,10 +112,20 @@ Home of the project: <a href="https://github.com/lordcase/cubehq" target="_blank
 	footer {
 		margin-top: 20px;
 		background: #088;
+		padding: 30px;
 	}
 	@media (min-width: 640px) {
 		main {
 			max-width: none;
+		}
+	}
+	@media (max-width: 880px) {
+		#slot_moves {
+			width: 100%;
+			padding-top: 30px;
+		}
+		#slot_alger {
+			width: 100%;
 		}
 	}
 </style>

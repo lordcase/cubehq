@@ -16,6 +16,7 @@
     "svelte": "^3.0.0"
   },
   "dependencies": {
+    "scramble-generator": "^0.2.2",
     "sirv-cli": "^0.4.4",
     "spark-md5": "^3.0.1"
   }

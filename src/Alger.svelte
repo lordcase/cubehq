@@ -3,6 +3,7 @@
 	import {base_algs} from './algs.js'
 	import { createEventDispatcher } from 'svelte';
 	import SparkMD5 from 'spark-md5'
+	import generateScramble from 'scramble-generator';
 
 	let defAlg = {name: 'Unnamed', img: false, alg: 'Alg_missing', seq: 'Sequence_missing', desc: 'No description', video: false}
 	let currPos = 0
@@ -10,10 +11,12 @@
 	let forceNext = ''
 	let nextStep = ''
 	let state = 'idle'
-	let reveal = false
+	let reveal = true
 	let repeat = false
 	let repeatFreq = 20
 	let startTime = 0
+	let currentRecordTime = 'n/a'
+	let recordTimes = new Map()
 	let timeSlot
 	let showHide = []
 	let seq = []
@@ -22,6 +25,9 @@
 	let soundMove = new Audio('/sounds/141121__eternitys__interface1.wav')
 	const soundFail = new Audio('/sounds/142608__autistic-lucario__error.wav')
 	const soundSuccess = new Audio('/sounds/426889__thisusernameis__beep3.wav')
+	const soundRecord = new Audio('/sounds/345299-scrampunk-okay.mp3')
+	var currentScramble = {}
+	let currentScrambleHash
 
 	let errorMsg = ""
 	let blah = ""
@@ -29,11 +35,26 @@
 	let current_alg = ''
 	let current_alg_id = ''
 
-	let alg_f_keys = ["custom"] //alg family keys
-	let alg_f_grouping = {"custom":[]} //for hierarchical representation
+	let alg_f_keys = ["custom", "special"] //alg family keys
+	let alg_f_grouping = {"custom":[],"special":[]} //for hierarchical representation
 	let alg_map = new Map() //new container for the algs
-	let alg_list = [] // mutable array for active args
-	console.log(typeof alg_f_keys)
+	let alg_list = [] // mutable array for active algs
+
+	const saveSettings = () => {
+		const datastore = {
+			'name' : 'default',
+			'settings' : {
+				reveal,
+				continuous,
+			},
+			'algs' : {
+				alg_f_grouping,
+				alg_f_keys,
+				alg_map,
+				alg_list
+			},
+		}
+	}
 
 	//populate alg families, hydrate & hash algs from base
 	for (let f in base_algs) {
@@ -49,6 +70,7 @@
 		}
 	}
 
+
 	//debug logs
 	const dlog = () => {
 		console.log("base algs", base_algs)
@@ -58,10 +80,10 @@
 		console.log("alg list", alg_list)
 	}
 
-	dlog()
 	
 	let active_families = alg_f_keys
-	let active_algs = alg_list
+
+	// dlog()
 
 	assembleAlgArray()
 	const dispatch = createEventDispatcher();
@@ -82,6 +104,30 @@
 		for (let s in seq) {
 			seq[s].state = ''
 		}
+		if (currentScrambleHash) {
+			// alg_map.delete(currentScrambleHash)
+			// if (alg_list.includes(currentScrambleHash)) {
+			// 	alg_list.splice(alg_list.indexOf(currentScrambleHash,1))
+			// }
+			// if (alg_f_grouping["custom"].includes(currentScrambleHash)) {
+			// 	alg_f_grouping["custom"].splice(alg_f_grouping["custom"].indexOf(currentScrambleHash,1))
+			// }
+			removeAlg({'id':currentScrambleHash, 'family':'special'})
+		}
+
+		currentScramble = generateScramble();
+		let temp_alg = {...defAlg, 'name':'Scramble','alg':currentScramble, 'seq':currentScramble}
+		// REMOVED FOR UX TESTING let alg_hash = currentScrambleHash = addAlg(temp_alg, 'special')
+			// let alg_hash = currentScrambleHash = SparkMD5.hash(JSON.stringify(temp_alg))
+			// alg_map.set(alg_hash,temp_alg)
+			// // algs[f][alg_hash] = temp_alg
+			// alg_list.push(alg_hash)
+			// alg_f_grouping["special"].push(alg_hash)
+			// assembleAlgArray()
+			// alg_f_grouping = alg_f_grouping
+			// REMOVED FOR UX TESTING console.log(`added Scramble: ${alg_hash}`)
+	
+			// dlog()
 	}
 	//handle fails
 	const fail = () => {
@@ -180,42 +226,53 @@
 	const createSequence = () => current_alg.seq.split(' ').map(a=>({state:'', move:a}))
 	//select a specific alg for practice directly
 	const selectAlg = (e) => {
-		current_alg = alg_map.get(e.target.dataset.id)
+		current_alg_id = e.target.dataset.id
+		current_alg = alg_map.get(current_alg_id)
 		dispatch("newalg", current_alg)
 		seq = createSequence()
+		currentRecordTime = recordTimes.get(current_alg_id) || 'n/a'
 		hideAllFamilies()
 		reset()
 	}
-	const addAlg = () => {
+	const addUserAlg = () => {
 		console.log(document.getElementById("alg_def").value)
 		try {
 			let alg_def = JSON.parse(document.getElementById("alg_def").value)
-			console.log(alg_def)
-			let temp_alg = {...defAlg, ...alg_def}
-			let alg_hash = SparkMD5.hash(JSON.stringify(temp_alg))
-			alg_map.set(alg_hash,temp_alg)
-			// algs[f][alg_hash] = temp_alg
-			alg_list.push(alg_hash)
-			alg_f_grouping["custom"].push(alg_hash)
-			assembleAlgArray()
-			alg_f_grouping = alg_f_grouping
+			console.log("alg_def",alg_def)
+			addAlg(alg_def)
 		}
 		catch(error) {
 			errorMsg= error
 		}
 	}
+	const addAlg = (alg_def, family = 'custom') => {
+		console.log("adding!!!!")
+		let temp_alg = {...defAlg, ...alg_def}
+		let alg_hash = SparkMD5.hash(JSON.stringify(temp_alg))
+		alg_map.set(alg_hash,temp_alg)
+		// algs[f][alg_hash] = temp_alg
+		alg_list.push(alg_hash)
+		alg_f_grouping[family].push(alg_hash)
+		assembleAlgArray()
+		alg_f_grouping = alg_f_grouping
+		return alg_hash
+	}	
 	//remove an alg from the list - under construction
-	const removeAlg = (e) => {
-		alg_map.delete(e.target.dataset.id)
-		alg_f_grouping
-		for( let i = 0; i < alg_f_grouping[e.target.dataset.family].length; i++) {
-			if ( alg_f_grouping[e.target.dataset.family][i] === e.target.dataset.id) {
-				alg_f_grouping[e.target.dataset.family].splice(i, 1); i--
+	const removeAlgRow = (e) => {
+		const {id, family} = e.target.dataset
+		removeAlg({id, family})
+	}
+	const removeAlg = (alg) => {
+		console.log("del", alg)
+		alg_map.delete(alg.id)
+		for( let i = 0; i < alg_f_grouping[alg.family].length; i++) {
+			if ( alg_f_grouping[alg.family][i] === alg.id) {
+				alg_f_grouping[alg.family].splice(i, 1); i--
 			}
 		}
 		alg_f_grouping = alg_f_grouping
 		assembleAlgArray()
-		dlog()
+		// dlog()
 	}
 
 	//select a random alg from the active list
@@ -237,20 +294,21 @@
 	function assembleAlgArray () {
 		let current_algset = []
 		for (let i in alg_f_keys){
-			console.log(`curr_key:${i} - ${alg_f_keys[i]}`)
+			// console.log(`curr_key:${i} - ${alg_f_keys[i]}`)
 			if (active_families.indexOf(alg_f_keys[i])!==-1) {
-				console.log(`curr_key:${i} - ${alg_f_keys[i]} bingo`)
+				// console.log(`curr_key:${i} - ${alg_f_keys[i]} bingo`)
 				for (let j in alg_f_grouping[alg_f_keys[i]]) {
 					let curr_id = alg_f_grouping[alg_f_keys[i]][j]
 					if (alg_map.has(curr_id)) {
-						console.log(`pushing:${curr_id} - `,alg_map.get(curr_id))
+						// console.log(`pushing:${curr_id} - `,alg_map.get(curr_id))
 						current_algset.push({...defAlg, ...alg_map.get(curr_id), family:alg_f_keys[i], id:j})
 					}
 				}
 			}
 		}
-		console.log("current_algset",current_algset)
+		// console.log("current_algset",current_algset)
 		alg_list = current_algset
+		dlog()
 		return current_algset
 	}
 
@@ -262,8 +320,9 @@
 
 	//handle all move events
 	export function handleMove(newMove) {
+		newMove = trans_alg(trans_alg(newMove, XTR), XTR)
 		console.log("move:", newMove)
-		move = newMove
+		move = newMove.trim()
 		soundMove = new Audio('/sounds/141121__eternitys__interface1.wav')
 		// soundMove.play()
 		if ((state === 'success' || state === 'failed') && continuous) {
@@ -273,29 +332,29 @@
 		if ((state === 'success' || state === 'failed') && !continuous) {
 			return
 		} else if (forceNext !== '' && forceNext !== move) {
-			console.log("fail1")
+			// console.log("fail1")
 			fail()
 			return
 		} else if (seq[currPos].move.charAt(0) === 'M' && forceNext === '' ) {
 			if (sliceMove) {
-				console.log("branch0")
+				// console.log("branch0")
 				if (checkSlice(move, "any")) {
 					sliceMove = undefined
 					proceed()
 				} else {
-					console.log("fail5")
+					// console.log("fail5")
 					fail()
 				}
 			} else if (seq[currPos].move.length === 1) {
-				console.log("branch1a")
+				// console.log("branch1a")
 				if (checkSlice(move, "normal")) {
 					proceed()
 				} else {
-					console.log("fail2")
+					// console.log("fail2")
 					fail()
 				}
 			} else if (seq[currPos].move.charAt(1) === "'"){
-				console.log("branch1b")
+				// console.log("branch1b")
 				if (checkSlice(move, "prime")) {
 					if (seq[currPos].move.length === 3) {
 						sliceMove = move
@@ -303,16 +362,16 @@
 					}
 					proceed()
 				} else {
-					console.log("fail3")
+					// console.log("fail3")
 					fail()
 				}
 			} else {
-				console.log("branch1c")
+				// console.log("branch1c")
 				if (checkSlice(move, "any")) {
 					sliceMove = move
 					proceed()
 				} else {
-					console.log("fail4")
+					// console.log("fail4")
 					fail()
 				}
 			}
@@ -326,7 +385,13 @@
 			currPos++
 			if (currPos === seq.length) {
 				state = 'success'
-				soundSuccess.play()
+				if ( currentRecordTime === 'n/a' || parseFloat(timeSlot.innerHTML) < parseFloat(currentRecordTime)) {
+					soundRecord.play()
+					currentRecordTime = timeSlot.innerHTML
+					recordTimes.set(current_alg_id, currentRecordTime)
+				} else {
+					soundSuccess.play()
+				}
 				clearInterval(repeat)
 				nextStep = ''
 			} else {
@@ -337,7 +402,7 @@
 			proceed()
 			forceNext = move
 		} else {
-			console.log("fail7")
+			// console.log("fail7")
 			fail()
 		}
 	}
@@ -346,15 +411,19 @@
 	onMount(()=>{
 		
 		current_alg = getRandomAlg()
-		console.log("alg_map",alg_map)
+		// console.log("alg_map",alg_map)
 		timeSlot = document.getElementById('time')
-		blah = JSON.stringify(defAlg)
+		blah = JSON.stringify(
+			{name: 'Your Alg',  alg: "F D F U'", seq: "F D F U'"}
+		)
+
 	})
 </script>
 
 
 
 <form id="families">
+
 	{#each alg_f_keys as family, i}
 		{#if alg_f_grouping[family].length > 0}
 		<div class="family family_{family}">
@@ -368,7 +437,7 @@
 				<label><div class="alg_row">
 					<input type="checkbox" class="alg" name="{family+"_"+alg_map.get(key).name}" value="{alg_map.get(key).name}" checked on:click={reEval}>{alg_map.get(key).name}
 					<div class="icons">
-						<i class="far fa-minus-square" data-family="{family}" data-id="{key}" on:click|preventDefault|stopPropagation={removeAlg}></i>
+						<!-- <i class="far fa-minus-square" data-family="{family}" data-id="{key}" on:click|preventDefault|stopPropagation={removeAlgRow}></i> -->
 						<i class="fas fa-angle-double-down" data-family="{family}" data-id="{key}" on:click|preventDefault|stopPropagation={selectAlg}></i>
 					</div>
 				</div></label>
@@ -378,15 +447,15 @@
 	{/if}
 	{/each}
 </form>
-<div class="alg_name" style="position: relative;">Name of Alg: <strong>{current_alg.name}</strong>
+<div class="alg_name" style="position: relative;">Current Alg: <strong>{current_alg.name}</strong>
 	{#if current_alg.video}
 		<a href={current_alg.video} target="_blank" class="play_video"><i class="fab fa-youtube" alt="video"></i></a>
 	{/if}
 </div>
 <div style="clear:both;">
-	<button on:click={()=>reveal = !reveal}>{!reveal ? 'Reveal' : 'Hide'} steps</button>
+	<button on:click={()=>reveal = !reveal}>{!reveal ? 'Reveal' : 'Hide'} moves</button>
 	<div class:reveal>
-		<div class="alg">{current_alg.alg}</div>
+		<!-- <div class="alg">{current_alg.alg}</div> -->
 		{#each seq as step}
 			<span class="step" class:correct="{step.state === 'correct'}" class:mistake="{step.state === 'mistake'}">{step.move}</span>
 		{/each}
@@ -402,23 +471,31 @@
 <div style="float: left; width: 75%;">
 	<div class:success="{state === 'success'}" class:failed="{state === 'failed'}">
 		<div>Last move:{move}</div>
-		<div>Steps:{currPos}</div>
+		<div>Moves:{currPos}</div>
 		<!-- <div>next step:{nextStep}</div> -->
 		<!-- <div>Force Next:{forceNext}</div> -->
 		<!-- <div>Slice Move:{sliceMove}</div> -->
 		<div>Solve Time: <span id="time"></span></div>
+		<div>Record Time: <span id="recordtime">{currentRecordTime}</span></div>
 	</div>
 	<div>
 		<!-- State:{state} -->
 		<button on:click={reset} >Reset Alg</button>
-		<button on:click={getRandomAlg} >New Alg</button><br>
+		<div></div>
+		<button on:click={getRandomAlg} >New Random Alg</button><br>
+		<br />
 		<button on:click={()=>continuous=!continuous} style="width: 200px;">Mode:{continuous?"Continuous":"Solo"}</button>
 		<div>
+			<br />
 			<textarea type="text" value={blah} id="alg_def" cols="40" rows="3"></textarea>
-			<button on:click={addAlg}>Add alg</button>
+			<br />
+			<button on:click={addUserAlg}>Add alg</button>
+			<br />
 			{#if errorMsg}
 			Error: {errorMsg}
 			{/if}
+			<br />
+			Insert your alg here based on the above JSON schema. Use standard cube notation.
 		</div>
 	</div>
 </div>

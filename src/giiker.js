@@ -316,6 +316,7 @@ export class Giiker extends EventEmitter {
   }
 
   _onCharacteristicValueChanged(event) {
+    console.log("charchanged", event)
     const value = event.target.value;
     const {state, moves} = this._parseCubeValue(value);
     this._state = state;
