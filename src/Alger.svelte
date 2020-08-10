@@ -436,7 +436,7 @@
 			{#each alg_f_grouping[family] as key}
 				<label><div class="alg_row">
 					<input type="checkbox" class="alg" name="{family+"_"+alg_map.get(key).name}" value="{alg_map.get(key).name}" checked on:click={reEval}>{alg_map.get(key).name}
-					<div class="icons">
+					<div class="icons">select:
 						<!-- <i class="far fa-minus-square" data-family="{family}" data-id="{key}" on:click|preventDefault|stopPropagation={removeAlgRow}></i> -->
 						<i class="fas fa-angle-double-down" data-family="{family}" data-id="{key}" on:click|preventDefault|stopPropagation={selectAlg}></i>
 					</div>
@@ -591,7 +591,6 @@
 	margin-bottom: 5px;
 }
 .icons {
-	display: inline-block;
 	float:right;
 	padding-right: 10px;
 }
